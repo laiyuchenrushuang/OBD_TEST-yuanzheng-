@@ -1,0 +1,9 @@
+# OBD_TEST-yuanzheng-
+* 隐藏图标
+* 写文件
+* 调用apk
+* startActivityForResult使用
+* permission的动态添加和check,和回调
+* json解析
+* intent数据传递
+* 应用以一个像素点启动
