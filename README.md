@@ -1,6 +1,6 @@
 # OBD_TEST-yuanzheng-
 * 隐藏图标
-* 写文件
+* 写文件（txt,xls两种追加）
 * 调用apk
 * startActivityForResult使用
 * permission的动态添加和check,和回调
