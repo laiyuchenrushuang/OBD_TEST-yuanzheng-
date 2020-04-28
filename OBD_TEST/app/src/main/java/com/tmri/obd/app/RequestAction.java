@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -16,6 +17,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tmri.obd.app.util.APPUtil;
@@ -33,6 +35,7 @@ public class RequestAction extends AppCompatActivity {
     private String mPackageName = "com.cnlaunch.x431.eVin";
     private String mActivityName = "com.cnlaunch.x431pro.activity.diagnose.DiagnoseActivity";
     private boolean isAllSearch;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,7 +48,11 @@ public class RequestAction extends AppCompatActivity {
         clsbdh = getIntent().getStringExtra("clsbdh");
         //缩小为一个像素
         initview();
-        if(checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                goYuanZhengApk(false);
+            }
+        } else {
             goYuanZhengApk(false);
         }
     }
@@ -95,11 +102,11 @@ public class RequestAction extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,  String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         switch (requestCode) {
             case PermissionsUtils.REQUEST_WRITE_EXTERNAL_STORAGE:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
+                    Log.d("lylog", "going!!!!!!");
                     goYuanZhengApk(false);
                 } else {
                     finish();
@@ -111,6 +118,7 @@ public class RequestAction extends AppCompatActivity {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     private void appRequestPermission() {
         List<String> list = new ArrayList<>();
         if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -137,35 +145,63 @@ public class RequestAction extends AppCompatActivity {
                         String code = jsons.get("code").getAsString();
 
                         if (!isAllSearch && code != null && !code.equals("-1")) { //-1才是成功
-                            Toast.makeText(this, "code != -1,vin快速扫描获取失败 ! " + result, Toast.LENGTH_SHORT).show();
                             goYuanZhengApk(true);
                             return;
                         }
 
                         if (isAllSearch && code != null && !code.equals("-1")) { //-1才是成功
-                            Toast.makeText(this, "code != -1,vin全车扫描获取失败 ! " + result, Toast.LENGTH_SHORT).show();
-                            APPUtil.write(cylsh +" , " +vin+";");
+                            showToast("code != -1,vin全车扫描获取失败 !");
+                            APPUtil.write(cylsh + " , " + vin + "; --> vin全车扫描获取失败");
                             finish();
                             return;
                         }
 
                         JsonObject njson = (JsonObject) parser.parse(result);
+                        if (null == njson.get("carCheckVinList")){
+                            if(!isAllSearch){
+                                goYuanZhengApk(true);
+                                return;
+                            }else {
+                                showToast("result 结果里没有carCheckVinList字段");
+                                APPUtil.write(cylsh + " , " + vin + "; --> result 结果里没有carCheckVinList字段");
+                                finish();
+                                return;
+                            }
+                        }
+                        JsonArray vinList =  (JsonArray) njson.get("carCheckVinList").getAsJsonArray();
+
+                        if(vinList.size()<= 0 ){
+                            if(!isAllSearch){
+                                goYuanZhengApk(true);
+                                return;
+                            }else {
+                                showToast("carCheckVinList数组为空");
+                                APPUtil.write(cylsh + " , " + vin + ";  --> carCheckVinList数组为空");
+                                finish();
+                                return;
+                            }
+                        }
                         JsonObject jb = (JsonObject) njson.get("carCheckVinList").getAsJsonArray().get(0);
-                        vin = jb.get("currVin").getAsString();
+                        if(null !=jb.get("currVin")){
+                            vin = jb.get("currVin").getAsString();
+                        }else{
+                            vin = "";
+                        }
+
                         intent.putExtra("cylsh", getIntent().getStringExtra("cylsh"));
                         intent.putExtra("clsbdh", getIntent().getStringExtra("clsbdh"));
 
                         if (vin != null && !vin.equals("")) vin = vin.trim();
                         if (vin == null || vin.equals("")) {
-                            Toast.makeText(RequestAction.this, "读取VIN数据为空！", Toast.LENGTH_SHORT).show();
+                            showToast("读取VIN数据为空");
                             intent.putExtra("code", "1");
                             intent.putExtra("message", "读取VIN数据为空！");
                         } else if (vin.equals(clsbdh)) {
-                            Toast.makeText(RequestAction.this, "合格", Toast.LENGTH_SHORT).show();
+                            showToast("合格");
                             intent.putExtra("code", "1");
                             intent.putExtra("message", "合格");
                         } else {
-                            Toast.makeText(RequestAction.this, "不合格", Toast.LENGTH_SHORT).show();
+                            showToast("不合格");
                             intent.putExtra("code", "1");
                             intent.putExtra("message", "不合格");
                         }
@@ -175,12 +211,13 @@ public class RequestAction extends AppCompatActivity {
                         Toast.makeText(this, "vin = " + vin, Toast.LENGTH_SHORT).show();
                         intent.putExtra("obd_clsbdh", vin);
                         setResult(Activity.RESULT_OK, intent);
-                        APPUtil.write(cylsh +" , " +vin+";");
+                        APPUtil.write(cylsh + " , " + vin + ";");
                         finish();
                     } else {
                         if (!isAllSearch) {
-                            Toast.makeText(this, "获取result为空，进入全车扫描 ", Toast.LENGTH_SHORT).show();
+                            showToast("获取result为空，进入全车扫描");
                             goYuanZhengApk(true);
+                            return;
                         } else {
                             Toast.makeText(this, "全车扫描获取result为空 ", Toast.LENGTH_SHORT).show();
                             finish();
@@ -201,10 +238,14 @@ public class RequestAction extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "RESULT_CANCELED，进入全车扫描  result = " + data.getStringExtra("result"), Toast.LENGTH_SHORT).show();
                 goYuanZhengApk(true);
+                return;
             }
         } else {
             setResult(Activity.RESULT_OK, intent);
             finish();
         }
+    }
+    public void showToast(String s){
+        Toast.makeText(this,s,Toast.LENGTH_SHORT).show();
     }
 }

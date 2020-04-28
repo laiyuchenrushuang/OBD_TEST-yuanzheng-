@@ -18,17 +18,15 @@
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="false"
             android:launchMode="singleInstance"
-            android:screenOrientation="portrait"
             android:theme="@style/OnePixelActivityTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <data
-                    android:host="@string/app_name"
-                    android:scheme="@string/app_name"
+                    android:host="AuthActivity"
+                    android:scheme="com.android.example"
                     tools:ignore="AppLinkUrlError" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     </application>
-
 </manifest>
